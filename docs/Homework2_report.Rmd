@@ -6,16 +6,17 @@ output: html_document
 
 ## Name
 
-Bo Han.
+Bo Han
 
 ### Setup
 
 Read in the data with `read_csv()` and store the data as an R object named `dataset`. Check the data to make sure all of the expected observations and variables are there.
 
 
-```{r}
+```{r, message=F}
 ## Load the data and any necessary packages here.
-
+library(tidyverse)
+dataset = read_csv("maacs.csv.gz")
 ```
 
 ## Part 1
@@ -32,7 +33,14 @@ NOTE: For this part, do not use any plots.
 
 ```{r}
 ## Write your function here
+fev1_age = function(dataset){
+  new_data = dataset %>% 
+    filter(!is.na(age) & !is.na(fev1))
+  corr = cor(new_data$fev1, new_data$age)
+  return(corr > 0)
+}
 
+fev1_age(dataset)
 ```
 
 
@@ -44,12 +52,16 @@ How much does FEV1 change for a 1-year increase in the child's age?
 
 ```{r}
 ## Add your code here
+model = lm(fev1 ~ age, data = dataset)
+coef(model)
 
+slope = as.numeric(coef(model)[2])
+intercept = as.numeric(coef(model)[1])
 ```
 
 
 Write your data analysis statement interpreting the regression model here:
-
+FEV1 increases by 0.171 liters for a 1-year increase in the child's age.
 
 
 ## Part 3
@@ -62,19 +74,31 @@ NOTE:
 
 * Do not use the code you write in Part 1 as a supporting premise
 
-```{r}
+```{r, warning=F, message=F}
 ## Add your code here
+ggplot(dataset, aes(x = age, y = fev1)) +
+  geom_point(shape = 21, size = 2, alpha = 0.7,
+             color = "black", fill = "steelblue") +
+  geom_smooth(method = "lm", color = "darkred") +
+  labs(title = "FEV1 vs Age", x = "Age (years)", y = "FEV1 (liters)") +
+  theme_minimal()
 
+coef(model)[2]
+
+dataset %>%
+  mutate(ages = cut(age, breaks = seq(5, 18, by=5))) %>%
+  group_by(ages) %>%
+  summarise(mean_fev1 = mean(fev1, na.rm = T))
 ```
 
 
 Write the three supporting premise statements here:
 
-1. 
+1. The scatter plot of FEV1 vs. Age shows a positive linear relationship.
 
-2. 
+2. The slope from the linear regression model is positive and greater than 0.
 
-3. 
+3. The mean FEV1 by age group increases along with the age group.
 
 
 ## Part 4
@@ -88,21 +112,60 @@ For statements involving plots, instead of returning `TRUE` or `FALSE`, you func
 2. Produce a hypothetical version of the plot in the event that the statement is true. This can be done using simulated data or by simply hand drawing a plot.
 
 
-```{r}
+```{r, message=F, warning=F}
 ## Function for supporting premise statement 1
+prem1 = function(dataset){
+  statement_plot = ggplot(dataset, aes(x = age, y = fev1)) +
+  geom_point(shape = 21, size = 2, alpha = 0.7,
+             color = "black", fill = "steelblue") +
+  geom_smooth(method = "lm", color = "darkred") +
+  labs(title = "FEV1 vs Age", x = "Age (years)", y = "FEV1 (liters)") +
+  theme_minimal()
+  
+  print(statement_plot)
 
+  set.seed(9-19-2025)
+  sim_data = data.frame(age = seq(min(dataset$age, na.rm=T),
+                                  max(dataset$age, na.rm=T), length.out = 150))
+  sim_data$fev1 = slope*sim_data$age + intercept + rnorm(150, 0, 0.5)
+  
+  sim_plot = ggplot(sim_data, aes(x = age, y = fev1)) +
+    geom_point(shape = 21, size = 2, alpha = 0.7,
+               color = "black", fill = "darkgreen") +
+    geom_smooth(method = "lm", color = "darkred") +
+    labs(title = "Simulated FEV1 vs. Age", x = "Age (years)", y = "FEV1 (liters)") +
+    theme_minimal()
+  
+  print(sim_plot)
+}
+
+prem1(dataset)
 ```
 
 
 ```{r}
 ## Function for supporting premise statement 2
+prem2 = function(dataset){
+  model = lm(fev1 ~ age, data = dataset)
+  slope = as.numeric(coef(model)[2])
+  return(slope > 0)
+}
 
+prem2(dataset)
 ```
 
 
 ```{r}
 ## Function for supporting premise statement 3
+prem3 = function(dataset){
+  group_mean = dataset %>%
+    mutate(ages = cut(age, breaks = seq(5, 18, by = 5))) %>%
+    group_by(ages) %>%
+    summarise(mean_fev1 = mean(fev1, na.rm = T))
+  return(all(diff(group_mean$mean_fev1) > 0))
+}
 
+prem3(dataset)
 ```
 
 Execute each of your function and show that the produce the expected output.
